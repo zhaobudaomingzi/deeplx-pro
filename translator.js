@@ -41,7 +41,6 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   const proxy = getNextProxy();
   const cookie = getNextCookie();
 
-  // Add a maximum retry limit
   const maxRetries = 5;
   if (tryCount >= maxRetries) {
     console.error("Max retry limit reached.");
@@ -54,7 +53,6 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   }
 
   const headers = { ...baseHeaders };
-  if (proxy) headers['proxy'] = proxy;
   if (cookie) headers['cookie'] = cookie;
 
   const postData = {
@@ -72,8 +70,21 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
     },
   };
 
+  const axiosConfig = {
+    headers,
+    proxy: proxy ? {
+      host: proxy.hostname,
+      port: parseInt(proxy.port, 10),
+      auth: proxy.auth ? {
+        username: proxy.auth.split(':')[0],
+        password: proxy.auth.split(':')[1]
+      } : undefined,
+      protocol: 'http'  // 确保协议是正确的
+    } : false,
+  };
+
   try {
-    const response = await axios.post(DEEPL_BASE_URL, JSON.stringify(postData), { headers });
+    const response = await axios.post(DEEPL_BASE_URL, postData, axiosConfig);
     if (response.status !== 200) {
       console.error('Error', response.status);
       return null;
@@ -82,7 +93,6 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   } catch (err) {
     console.error("response error:" + err);
 
-    // Mark the proxy and/or cookie as invalid only if they were used
     if (proxy) markProxyInvalid(proxy);
     if (cookie) markCookieInvalid(cookie);
 
